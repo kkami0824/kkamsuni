@@ -259,9 +259,9 @@
   scene.fog = new THREE.Fog('#f2e4d5', 9, 20);
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 40);
-  let camYaw = 0.24;
-  let camPitch = 0.46;
-  let camDist = 3.55;
+  let camYaw = 0.16;
+  let camPitch = 0.36;
+  let camDist = 2.55;
   const camTarget = new THREE.Vector3(0, 0.34, 0);
 
   // Lights
@@ -528,11 +528,52 @@
   const dog = new THREE.Group();
   scene.add(dog);
 
-  const matCharcoal = new THREE.MeshStandardMaterial({ color: '#42454b', roughness: 0.88 });
-  const matSilver   = new THREE.MeshStandardMaterial({ color: '#8f8b85', roughness: 0.88 });
-  const matCrown    = new THREE.MeshStandardMaterial({ color: '#d4c3aa', roughness: 0.82 });
-  const matTan      = new THREE.MeshStandardMaterial({ color: '#c78f58', roughness: 0.85 });
-  const matTanLight = new THREE.MeshStandardMaterial({ color: '#d8a572', roughness: 0.85 });
+  // Procedural Fur Textures for realistic silky Yorkie coat
+  function makeFurTexture(baseHex, streakHex1, streakHex2) {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = baseHex;
+    ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 1400; i++) {
+      const x = (i * 73) % 256;
+      const y = (i * 137) % 256;
+      const len = 10 + (i % 14);
+      ctx.strokeStyle = i % 3 === 0 ? streakHex1 : streakHex2;
+      ctx.globalAlpha = 0.28 + (i % 4) * 0.08;
+      ctx.lineWidth = 1.2 + (i % 2) * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.sin(i) * 2.5, y + len);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  const matCharcoal = new THREE.MeshStandardMaterial({
+    map: makeFurTexture('#383a3f', '#52565e', '#232428'),
+    roughness: 0.92
+  });
+  const matSilver   = new THREE.MeshStandardMaterial({
+    map: makeFurTexture('#7d7c7a', '#a3a19e', '#565553'),
+    roughness: 0.92
+  });
+  const matCrown    = new THREE.MeshStandardMaterial({
+    map: makeFurTexture('#cbb99e', '#e5d8c3', '#9d896d'),
+    roughness: 0.86
+  });
+  const matTan      = new THREE.MeshStandardMaterial({
+    map: makeFurTexture('#bd8651', '#d8a472', '#8f5e32'),
+    roughness: 0.88
+  });
+  const matTanLight = new THREE.MeshStandardMaterial({
+    map: makeFurTexture('#cfa06c', '#e8c092', '#a87644'),
+    roughness: 0.88
+  });
   const matEye      = new THREE.MeshStandardMaterial({ color: '#141110', roughness: 0.15, metalness: 0.1 });
   const matWhite    = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.1 });
   const matNose     = new THREE.MeshStandardMaterial({ color: '#191717', roughness: 0.25 });
@@ -546,8 +587,8 @@
   const bodyPivot = new THREE.Group();
   dog.add(bodyPivot);
 
-  const torso = new THREE.Mesh(new THREE.SphereGeometry(0.145, 22, 18), matCharcoal);
-  torso.scale.set(0.92, 0.88, 1.32);
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(0.132, 22, 18), matCharcoal);
+  torso.scale.set(0.86, 0.84, 1.38);
   torso.position.set(0, 0.21, 0);
   torso.castShadow = true;
   bodyPivot.add(torso);
@@ -619,29 +660,55 @@
   cranium.castShadow = true;
   headPivot.add(cranium);
 
-  // Silky silver-blonde crown & bangs
-  const crownHair = new THREE.Mesh(new THREE.SphereGeometry(0.128, 22, 16), matCrown);
-  crownHair.scale.set(1.05, 0.72, 0.98);
-  crownHair.position.set(0, 0.056, -0.005);
+  // Silky silver-blonde crown & soft center-parted tufts (no round balls!)
+  const crownHair = new THREE.Mesh(new THREE.SphereGeometry(0.129, 22, 16), matCrown);
+  crownHair.scale.set(1.06, 0.62, 0.94);
+  crownHair.position.set(0, 0.068, -0.006);
   crownHair.castShadow = true;
   headPivot.add(crownHair);
 
-  const bangL = new THREE.Mesh(new THREE.SphereGeometry(0.048, 12, 10), matCrown);
-  bangL.scale.set(1.1, 0.7, 0.9);
-  bangL.position.set(-0.045, 0.065, 0.088);
-  const bangR = bangL.clone();
-  bangR.position.x = 0.045;
-  headPivot.add(bangL, bangR);
+  // Wispy silver-blonde hair tufts between ears
+  for (let i = -2; i <= 2; i++) {
+    const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.065, 8), matCrown);
+    tuft.position.set(i * 0.024, 0.118 - Math.abs(i) * 0.008, 0.01 + (i === 0 ? 0.01 : 0));
+    tuft.rotation.z = -i * 0.22;
+    tuft.rotation.x = 0.18;
+    headPivot.add(tuft);
+  }
 
-  // Fluffy golden-tan cheek tufts & round muzzle
-  const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.062, 14, 12), matTanLight);
-  cheekL.position.set(-0.082, -0.022, 0.065);
+  // Signature dark charcoal-black fur patch at the glabella (미간 까만 털!)
+  const glabella = new THREE.Mesh(new THREE.SphereGeometry(0.046, 16, 14), matCharcoal);
+  glabella.scale.set(0.92, 0.95, 0.85);
+  glabella.position.set(0, 0.022, 0.098);
+  headPivot.add(glabella);
+
+  const eyeBridgeL = new THREE.Mesh(new THREE.SphereGeometry(0.032, 12, 10), matCharcoal);
+  eyeBridgeL.position.set(-0.028, 0.024, 0.095);
+  const eyeBridgeR = eyeBridgeL.clone();
+  eyeBridgeR.position.x = 0.028;
+  headPivot.add(eyeBridgeL, eyeBridgeR);
+
+  // Fluffy golden-tan cheek & muzzle tufts
+  const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.064, 14, 12), matTanLight);
+  cheekL.scale.set(1.05, 0.85, 0.85);
+  cheekL.position.set(-0.082, -0.028, 0.064);
   const cheekR = cheekL.clone();
   cheekR.position.x = 0.082;
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.058, 16, 14), matTanLight);
-  muzzle.scale.set(1.15, 0.88, 0.95);
-  muzzle.position.set(0, -0.025, 0.108);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.056, 16, 14), matTanLight);
+  muzzle.scale.set(1.18, 0.84, 0.94);
+  muzzle.position.set(0, -0.03, 0.108);
   headPivot.add(cheekL, cheekR, muzzle);
+
+  // Radial spiky-fluffy beard/cheek hairs
+  for (let side of [-1, 1]) {
+    for (let k = 0; k < 3; k++) {
+      const whisker = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.052, 7), matTanLight);
+      whisker.position.set(side * (0.092 - k * 0.012), -0.02 - k * 0.018, 0.082 + k * 0.008);
+      whisker.rotation.z = -side * (1.1 + k * 0.28);
+      whisker.rotation.x = 0.2;
+      headPivot.add(whisker);
+    }
+  }
 
   // Nose & cute peeking tongue
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.021, 14, 12), matNose);
